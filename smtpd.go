@@ -307,7 +307,7 @@ loop:
 					if s.srv.HandlerMail != nil {
 						err := s.srv.HandlerMail(s.conn.RemoteAddr(), from)
 						if err != nil {
-							s.writef("501 5.5.1 %w", err)
+							s.writef("501 5.5.1 %s", err)
 						}
 					}
 					s.writef("250 2.1.0 Ok")
