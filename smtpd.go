@@ -37,6 +37,9 @@ type HandlerRcpt func(remoteAddr net.Addr, from string, to string) bool
 // AuthHandler function called when a login attempt is performed. Returns true if credentials are correct.
 type AuthHandler func(remoteAddr net.Addr, mechanism string, username []byte, password []byte, shared []byte) (bool, error)
 
+// HandlerRcpt function called on MAIL. Return accept status.
+type HandlerMail func(remoteAddr net.Addr, from string) error
+
 // ListenAndServe listens on the TCP network address addr
 // and then calls Serve with handler to handle requests
 // on incoming connections.
@@ -83,6 +86,7 @@ type Server struct {
 	AuthRequired bool            // Require authentication for every command except AUTH, EHLO, HELO, NOOP, RSET or QUIT as per RFC 4954. Ignored if AuthHandler is not configured.
 	Handler      Handler
 	HandlerRcpt  HandlerRcpt
+	HandlerMail  HandlerMail
 	Hostname     string
 	LogRead      LogFunc
 	LogWrite     LogFunc
@@ -274,6 +278,7 @@ loop:
 			}
 
 			match := mailFromRE.FindStringSubmatch(args)
+
 			if match == nil {
 				s.writef("501 5.5.4 Syntax error in parameters or arguments (invalid FROM parameter)")
 			} else {
@@ -299,6 +304,12 @@ loop:
 				} else { // No parameters after FROM
 					from = match[1]
 					gotFrom = true
+					if s.srv.HandlerMail != nil {
+						err := s.srv.HandlerMail(s.conn.RemoteAddr(), from)
+						if err != nil {
+							s.writef("501 5.5.1 %w", err)
+						}
+					}
 					s.writef("250 2.1.0 Ok")
 				}
 			}
